@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title></title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.21.0/mapbox-gl.js'></script>
+    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.21.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body { margin:0; padding:0; }
+        #map { position:absolute; top:0; bottom:0; width:100%; }
+
+        .map-overlay {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.8);
+            margin-right: 20px;
+            font-family: Arial, sans-serif;
+            overflow: auto;
+            border-radius: 3px;
+        }
+        #legend {
+            padding: 10px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+            line-height: 18px;
+            margin-bottom: 40px;
+            width: 100px;
+        }
+        .legend-key {
+            display:inline-block;
+            border-radius: 20%;
+            width: 10px;
+            height: 10px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div id='map'></div>
+<div class='map-overlay' id='legend'></div>
+<script>
+// sub in your Mapbox access token here
+mapboxgl.accessToken = 'pk.eyJ1IjoiZGFuc3dpY2siLCJhIjoieUZiWmwtVSJ9.0cPQywdbPVmvHiHJ6NwdXA';
+var map = new mapboxgl.Map({
+    container: 'map', // container id
+    style: 'mapbox://styles/mapbox/dark-v9', //stylesheet location
+    center: [30.9314,-17.8061], // starting position
+    zoom: 16 // starting zoom
+});
+
+// array of building categories and corresponding fill-color
+// these will be used later to build the data-driven style rules
+var categories = [['good', '#31a354'], ['average','#addd8e'], ['poor','#f7fcb9']];
+
+// use jQuery to make an AJAX request for GeoJSON data
+$.ajax({
+    url: "../data/building-condition.geojson",
+    // when the AJAX request is complete, hand the data in the response
+    // off to a function that will build a map and add the building data
+    complete: function(data) {
+        
+        // wait until the map has initialized 
+        map.on("load", function() {
+            // add a new source from the building condition GeoJSON data
+            map.addSource("sotmus-buildings", {
+                type: "geojson",
+                // the AJAX response is a string, which needs to be parsed into JSON
+                data: JSON.parse(data.responseText)
+            });
+
+            // create a new layer from the GeoJSON building data and 
+            // style it according to the array of categories from earlier
+            map.addLayer({
+                "id": "building-condition",
+                "type": "fill",
+                "source": "sotmus-buildings",
+                "layout": {},
+                "paint": {
+                    "fill-color": {
+                        property: "building:condition",
+                        type: "categorical", // if your data isn't numbers, you need this!
+                        stops: [
+                            ["excellent", categories[0][1]],
+                            ["excelent", categories[0][1]], // there are some typos in the data! 
+                            ["good", categories[0][1]],
+                            ["average", categories[1][1]],
+                            ["poor", categories[2][1]],
+                            ["underconstruction", categories[2][1]]
+                        ]
+                    }
+                }
+            });
+
+            // build a legend using the category array from earlier
+            // adapted from https://www.mapbox.com/help/choropleth-studio-gl-pt-2/
+            categories.forEach(function(category) {;
+              var color = category[1];
+              var item = document.createElement('div');
+              var key = document.createElement('span');
+              key.className = 'legend-key';
+              key.style.backgroundColor = color;
+
+              var value = document.createElement('span');
+              value.innerHTML = category[0];
+              item.appendChild(key);
+              item.appendChild(value);
+              legend.appendChild(item);
+            });
+        });
+    }
+});
+
+</script>
+
+</body>
+</html>
